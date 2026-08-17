@@ -1,0 +1,17 @@
+# ===== Web Framework =====
+Flask==3.0.3
+Flask-SQLAlchemy==3.1.1
+
+# ===== Database =====
+SQLAlchemy==2.0.35
+
+# ===== Computer Vision (จะใช้จริงใน Phase 2) =====
+opencv-python==4.10.0.84
+face_recognition==1.3.0
+# หมายเหตุ: face_recognition ต้องพึ่ง dlib ซึ่งต้อง compile
+# ถ้าติดตั้งยากบน Windows แนะนำใช้ conda หรือ dlib wheel สำเร็จรูป
+
+numpy==1.26.4
+
+# ===== Utility =====
+python-dotenv==1.0.1

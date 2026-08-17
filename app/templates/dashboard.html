@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Instructor Dashboard - Smart Attendance System</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    background: #0f1115;
+    color: #eaeaea;
+    margin: 0;
+    padding: 24px 16px 60px;
+  }
+  .container { max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 22px; margin-bottom: 2px; }
+  .subtitle { color: #888; margin-bottom: 22px; font-size: 14px; }
+
+  /* ช่องแจ้งเตือนสีแดง */
+  #alertBanner {
+    display: none;
+    background: #a3312a;
+    border: 1px solid #e05c52;
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin-bottom: 20px;
+    animation: pulse 1.4s infinite;
+  }
+  #alertBanner strong { display: block; margin-bottom: 6px; font-size: 15px; }
+  #alertBanner .alert-item { font-size: 13px; color: #ffd9d6; }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(224, 92, 82, 0.5); }
+    70%  { box-shadow: 0 0 0 10px rgba(224, 92, 82, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(224, 92, 82, 0); }
+  }
+
+  /* Summary cards */
+  .summary-row {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  .card {
+    flex: 1;
+    min-width: 140px;
+    background: #181a20;
+    border: 1px solid #2a2d34;
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+  }
+  .card .count { font-size: 30px; font-weight: 700; }
+  .card .label { font-size: 13px; color: #9aa0a6; margin-top: 4px; }
+  .card.not_arrived .count { color: #9aa0a6; }
+  .card.in_class .count { color: #3ddc84; }
+  .card.away .count { color: #f0b429; }
+  .card.missing .count { color: #ff6b6b; }
+
+  /* Session controls */
+  .session-controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 22px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    padding: 11px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .btn-start { background: #1f7a4d; color: #fff; }
+  .btn-end { background: #a3312a; color: #fff; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  #sessionInfo { font-size: 13px; color: #9aa0a6; }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 10px 12px; border-bottom: 1px solid #2a2d34; text-align: left; }
+  th { color: #9aa0a6; font-weight: 600; font-size: 13px; }
+  .badge { padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-not_arrived { background: #3a3d45; color: #cfd2d6; }
+  .badge-in_class { background: #1f7a4d; color: #fff; }
+  .badge-away { background: #b8860b; color: #fff; }
+  .badge-missing { background: #a3312a; color: #fff; }
+  .timer { font-family: monospace; color: #ccc; }
+
+  #lastUpdated { margin-top: 14px; font-size: 12px; color: #666; text-align: center; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+    <h1>Instructor Dashboard</h1>
+    <div style="font-size:13px; color:#9aa0a6;">
+      {{ instructor_name }} &nbsp;|&nbsp; <a href="/logout" style="color:#ff8a80; text-decoration:none;">ออกจากระบบ</a>
+    </div>
+  </div>
+  <p class="subtitle">Smart Attendance & Student Tracking System</p>
+
+  <div id="alertBanner">
+    <strong>⚠ แจ้งเตือน: มีนักศึกษาหายไปนานเกินกำหนด</strong>
+    <div id="alertList"></div>
+  </div>
+
+  <div class="summary-row">
+    <div class="card not_arrived"><div class="count" id="countNotArrived">0</div><div class="label">ยังไม่มาเรียน</div></div>
+    <div class="card in_class"><div class="count" id="countInClass">0</div><div class="label">อยู่ในห้อง</div></div>
+    <div class="card away"><div class="count" id="countAway">0</div><div class="label">ออกนอกห้อง</div></div>
+    <div class="card missing"><div class="count" id="countMissing">0</div><div class="label">หายไปเกินเวลา</div></div>
+  </div>
+
+  <div class="session-controls">
+    <button class="btn btn-start" id="btnStart" onclick="startSession()">▶ เริ่มคลาส</button>
+    <button class="btn btn-end" id="btnEnd" onclick="endSession()">⏹ จบคลาส & ดาวน์โหลดรายงาน</button>
+    <span id="sessionInfo">กำลังตรวจสอบสถานะคาบเรียน...</span>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>รหัสนักศึกษา</th><th>ชื่อ</th><th>สถานะ</th><th>เวลาที่ผ่านมา</th></tr>
+    </thead>
+    <tbody id="statusBody">
+      <tr><td colspan="4">กำลังโหลด...</td></tr>
+    </tbody>
+  </table>
+
+  <div id="lastUpdated"></div>
+</div>
+
+<script>
+  const stateBadgeClass = {
+    "Not_Arrived": "badge-not_arrived",
+    "In_Class": "badge-in_class",
+    "Away": "badge-away",
+    "Missing": "badge-missing",
+  };
+  const stateLabelTh = {
+    "Not_Arrived": "ยังไม่มาเรียน",
+    "In_Class": "อยู่ในห้อง",
+    "Away": "ออกไปข้างนอก",
+    "Missing": "หายไปนานเกินกำหนด",
+  };
+
+  function formatElapsed(isoTimestamp) {
+    if (!isoTimestamp) return "-";
+    const changedAt = new Date(isoTimestamp + "Z"); // ตีความว่าเป็น UTC (backend ใช้ utcnow())
+    const seconds = Math.max(0, Math.floor((Date.now() - changedAt.getTime()) / 1000));
+    const mm = Math.floor(seconds / 60).toString().padStart(2, "0");
+    const ss = (seconds % 60).toString().padStart(2, "0");
+    return `${mm}:${ss}`;
+  }
+
+  async function refreshStatus() {
+    try {
+      const res = await fetch('/api/status');
+      if (res.status === 401) { window.location = '/login'; return; }
+      const students = await res.json();
+
+      let notArrived = 0, inClass = 0, away = 0, missing = 0;
+      const rows = students.map(s => {
+        if (s.current_state === "Not_Arrived") notArrived++;
+        else if (s.current_state === "In_Class") inClass++;
+        else if (s.current_state === "Away") away++;
+        else if (s.current_state === "Missing") missing++;
+
+        const badgeClass = stateBadgeClass[s.current_state] || "badge-missing";
+        const label = stateLabelTh[s.current_state] || s.current_state;
+        const elapsed = (s.current_state === "Away" || s.current_state === "Missing")
+          ? formatElapsed(s.state_changed_at) : "-";
+
+        return `<tr>
+          <td>${s.student_code}</td>
+          <td>${s.full_name}</td>
+          <td><span class="badge ${badgeClass}">${label}</span></td>
+          <td class="timer">${elapsed}</td>
+        </tr>`;
+      }).join("");
+
+      document.getElementById('statusBody').innerHTML = rows || "<tr><td colspan='4'>ไม่มีข้อมูล</td></tr>";
+      document.getElementById('countNotArrived').innerText = notArrived;
+      document.getElementById('countInClass').innerText = inClass;
+      document.getElementById('countAway').innerText = away;
+      document.getElementById('countMissing').innerText = missing;
+      document.getElementById('lastUpdated').innerText = "อัปเดตล่าสุด: " + new Date().toLocaleTimeString('th-TH');
+
+      // อัปเดตช่องแจ้งเตือนสีแดง
+      const alertRes = await fetch('/api/alerts');
+      const alerts = await alertRes.json();
+      const banner = document.getElementById('alertBanner');
+      if (alerts.length > 0) {
+        banner.style.display = "block";
+        document.getElementById('alertList').innerHTML = alerts
+          .map(a => `<div class="alert-item">• ${a.full_name} (หายไปตั้งแต่ ${new Date(a.missing_since + "Z").toLocaleTimeString('th-TH')})</div>`)
+          .join("");
+      } else {
+        banner.style.display = "none";
+      }
+    } catch (err) {
+      document.getElementById('lastUpdated').innerText = "เชื่อมต่อไม่ได้: " + err;
+    }
+  }
+
+  async function refreshSessionInfo() {
+    try {
+      const res = await fetch('/api/session/status');
+      const data = await res.json();
+      const info = document.getElementById('sessionInfo');
+      const btnStart = document.getElementById('btnStart');
+
+      if (data.is_active) {
+        const startedAt = new Date(data.started_at + "Z").toLocaleTimeString('th-TH');
+        info.innerText = `คาบเรียนกำลังดำเนินอยู่ (เริ่ม ${startedAt})`;
+        btnStart.disabled = true;
+      } else {
+        info.innerText = "ยังไม่ได้เริ่มคาบเรียน";
+        btnStart.disabled = false;
+      }
+    } catch (err) {
+      document.getElementById('sessionInfo').innerText = "เชื่อมต่อไม่ได้";
+    }
+  }
+
+  async function startSession() {
+    const res = await fetch('/api/session/start', { method: 'POST' });
+    const data = await res.json();
+    alert(data.message || "เริ่มคลาสแล้ว");
+    refreshSessionInfo();
+  }
+
+  async function endSession() {
+    if (!confirm("ยืนยันจบคลาส? ระบบจะสร้างรายงานสรุปและดาวน์โหลดให้ทันที")) return;
+    const res = await fetch('/api/session/end', { method: 'POST' });
+    const data = await res.json();
+    alert(data.message || "จบคลาสแล้ว");
+    refreshSessionInfo();
+    // เปิดดาวน์โหลดรายงานในแท็บใหม่ ไม่รบกวนหน้า Dashboard เดิม
+    window.open('/api/report/export', '_blank');
+  }
+
+  refreshStatus();
+  refreshSessionInfo();
+  setInterval(refreshStatus, 2000);
+  setInterval(refreshSessionInfo, 5000);
+</script>
+</body>
+</html>

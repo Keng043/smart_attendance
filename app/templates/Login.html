@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>เข้าสู่ระบบอาจารย์ - Smart Attendance System</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    background: #0f1115;
+    color: #eaeaea;
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .login-box {
+    background: #181a20;
+    border: 1px solid #2a2d34;
+    border-radius: 12px;
+    padding: 32px 28px;
+    width: 100%;
+    max-width: 360px;
+  }
+  h1 { font-size: 18px; margin: 0 0 4px; text-align: center; }
+  .subtitle { color: #888; font-size: 13px; text-align: center; margin-bottom: 24px; }
+  label { display: block; font-size: 13px; color: #9aa0a6; margin-bottom: 6px; }
+  input {
+    width: 100%;
+    padding: 10px 12px;
+    margin-bottom: 16px;
+    background: #0f1115;
+    border: 1px solid #2a2d34;
+    border-radius: 8px;
+    color: #eaeaea;
+    font-size: 14px;
+  }
+  input:focus { outline: none; border-color: #1f7a4d; }
+  button {
+    width: 100%;
+    padding: 12px;
+    background: #1f7a4d;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:hover { background: #26965d; }
+  .error {
+    background: #a3312a;
+    color: #ffd9d6;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+  <div class="login-box">
+    <h1>เข้าสู่ระบบอาจารย์</h1>
+    <p class="subtitle">Smart Attendance & Student Tracking System</p>
+
+    {% if error %}
+      <div class="error">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" action="/login">
+      <label for="username">ชื่อผู้ใช้</label>
+      <input type="text" id="username" name="username" required autofocus>
+
+      <label for="password">รหัสผ่าน</label>
+      <input type="password" id="password" name="password" required>
+
+      <button type="submit">เข้าสู่ระบบ</button>
+    </form>
+  </div>
+</body>
+</html>
