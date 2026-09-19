@@ -56,6 +56,11 @@ def create_app():
     # ReportService ไม่ต้องพึ่งกล้อง/dlib เลย จึงสร้างง่ายๆ ตรงนี้ได้ทันที
     app.config["REPORT_SERVICE"] = ReportService()
 
+    # Ensure newly added tables (e.g. audit_logs) exist on an existing local SQLite DB.
+    from app import models  # noqa: F401 - registers ORM models with Base.metadata
+    from app.database import init_db
+    init_db()
+
     from app.routes import bp as main_blueprint
     app.register_blueprint(main_blueprint)
 

@@ -277,7 +277,7 @@ class Instructor(Base):
         return f"<Instructor {self.username}>"
 
 # ======================================================================
-# TABLE 9: AuditLog - security-sensitive application events
+# TABLE 10: AuditLog - security-sensitive application events
 # เก็บเฉพาะ metadata ของเหตุการณ์ ไม่เก็บ password หรือ face data
 # ======================================================================
 class AuditLog(Base):
