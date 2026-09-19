@@ -29,6 +29,7 @@ from werkzeug.security import check_password_hash
 from app.database import get_session
 from app.models import Student, StudentState, StateEnum, Instructor
 from app.auth import login_required, api_login_required
+from app.audit import record_event
 
 bp = Blueprint("main", __name__)
 
@@ -81,8 +82,13 @@ def login():
         # เก็บแค่ instructor_id ไว้ใน session cookie เท่านั้น (ไม่เก็บรหัสผ่าน)
         flask_session["instructor_id"] = instructor.id
         flask_session["instructor_name"] = instructor.full_name or instructor.username
+        record_event(session, "USER_LOGIN", instructor.id)
+        session.commit()
 
-        next_url = request.args.get("next") or url_for("main.dashboard")
+        next_url = request.args.get("next")
+        # ป้องกัน open redirect: อนุญาตเฉพาะ path ภายในแอป
+        if not next_url or not next_url.startswith("/") or next_url.startswith("//"):
+            next_url = url_for("main.dashboard")
         return redirect(next_url)
     finally:
         session.close()
@@ -90,7 +96,15 @@ def login():
 
 @bp.route("/logout")
 def logout():
-    """ออกจากระบบ - ล้าง session ทั้งหมด แล้วพากลับไปหน้า login"""
+    """ออกจากระบบ - บันทึก audit event แล้วล้าง session"""
+    instructor_id = flask_session.get("instructor_id")
+    session = get_session()
+    try:
+        if instructor_id:
+            record_event(session, "USER_LOGOUT", instructor_id)
+            session.commit()
+    finally:
+        session.close()
     flask_session.clear()
     return redirect(url_for("main.login"))
 

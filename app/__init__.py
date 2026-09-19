@@ -16,6 +16,7 @@ app แบบ global ตรง ๆ)?
 ทำให้เทสแอปได้ง่ายขึ้นในอนาคต (สร้างหลาย instance สำหรับเทสแต่ละเคสได้)
 """
 
+import logging
 import os
 
 from flask import Flask
@@ -33,10 +34,20 @@ def create_app():
     """
     app = Flask(__name__)
 
+    # Logging: เก็บข้อมูลสำคัญของแอปไว้ตรวจสอบปัญหาโดยไม่ log ข้อมูลใบหน้า/รหัสผ่าน
+    if not app.logger.handlers:
+        logging.basicConfig(level=logging.INFO)
+    app.logger.setLevel(logging.INFO)
+
     # secret_key จำเป็นสำหรับ Flask session (ใช้เข้ารหัส/ยืนยัน session cookie)
     # ใช้ os.urandom() สุ่มใหม่ทุกครั้งที่รัน server ก็เพียงพอสำหรับงานนี้
     # (ผลคือถ้า restart server ทุกคนจะต้อง login ใหม่ ซึ่งรับได้สำหรับระบบนี้)
     app.secret_key = os.environ.get("SECRET_KEY", os.urandom(24))
+    app.config.update(
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE="Lax",
+        SESSION_COOKIE_SECURE=os.getenv("SESSION_COOKIE_SECURE", "0") == "1",
+    )
 
     video_service = VideoStreamService()
     video_service.initialize()

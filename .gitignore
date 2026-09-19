@@ -3,3 +3,8 @@ __pycache__/
 *.db
 *.dat
 dataset/
+.env
+.env.*
+!.env.example
+*.pem
+*.key

@@ -275,3 +275,21 @@ class Instructor(Base):
 
     def __repr__(self):
         return f"<Instructor {self.username}>"
+
+# ======================================================================
+# TABLE 9: AuditLog - security-sensitive application events
+# เก็บเฉพาะ metadata ของเหตุการณ์ ไม่เก็บ password หรือ face data
+# ======================================================================
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    instructor_id = Column(Integer, ForeignKey("instructors.id"), nullable=True)
+    action = Column(String(50), nullable=False, index=True)
+    details = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    instructor = relationship("Instructor")
+
+    def __repr__(self):
+        return f"<AuditLog action={self.action} instructor_id={self.instructor_id}>"
