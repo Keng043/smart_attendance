@@ -29,6 +29,8 @@ import sys
 import shutil
 import argparse
 
+import face_recognition
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.database import get_session  # noqa: E402
@@ -44,6 +46,17 @@ KNOWN_FACES_DIR = os.path.join(
 def register(student_code: str, full_name: str, course_code: str, image_path: str) -> str:
     if not os.path.exists(image_path):
         raise FileNotFoundError(f"ไม่พบไฟล์รูปที่ path: {image_path}")
+
+    try:
+        image = face_recognition.load_image_file(image_path)
+        face_count = len(face_recognition.face_locations(image))
+    except Exception as exc:
+        raise ValueError("ไม่สามารถอ่านหรือประมวลผลไฟล์รูปใบหน้าได้") from exc
+
+    if face_count == 0:
+        raise ValueError("รูปต้นแบบต้องมีใบหน้า 1 ใบ แต่ตรวจไม่พบใบหน้า")
+    if face_count > 1:
+        raise ValueError(f"รูปต้นแบบต้องมีใบหน้าเพียง 1 ใบ แต่ตรวจพบ {face_count} ใบ")
 
     os.makedirs(KNOWN_FACES_DIR, exist_ok=True)
     target_path = os.path.abspath(image_path)

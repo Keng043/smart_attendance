@@ -1,6 +1,6 @@
 """Audit logging for security-sensitive application events."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.models import AuditLog
 
@@ -12,6 +12,6 @@ def record_event(session, action: str, instructor_id: int | None = None, details
             instructor_id=instructor_id,
             action=action,
             details=details,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc).replace(tzinfo=None),
         )
     )

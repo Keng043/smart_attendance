@@ -22,7 +22,7 @@ app/models.py
 """
 
 import enum
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import (
     Column,

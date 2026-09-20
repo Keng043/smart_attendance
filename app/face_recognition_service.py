@@ -96,7 +96,13 @@ class FaceEncodingRepository:
             )
             return None
 
-        # ถ้าเจอหลายหน้าในภาพเดียว ใช้หน้าแรกที่เจอ (สมมติว่ารูปต้นแบบมีคนเดียว)
+        if len(face_encodings) > 1:
+            print(
+                f"[FACE-REPO][WARN] รูปของ {student.full_name} มีหลายใบหน้า "
+                "จึงปฏิเสธรูปต้นแบบที่ไม่ชัดเจน"
+            )
+            return None
+
         return face_encodings[0]
 
     @property

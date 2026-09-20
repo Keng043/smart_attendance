@@ -16,6 +16,7 @@ def client():
     try:
         existing = session.query(Instructor).filter_by(username="pytest_auth_user").first()
         if existing:
+            session.query(AuditLog).filter_by(instructor_id=existing.id).delete(synchronize_session=False)
             session.delete(existing)
             session.commit()
         instructor = Instructor(
@@ -34,6 +35,7 @@ def client():
     try:
         instructor = session.query(Instructor).filter_by(username="pytest_auth_user").first()
         if instructor:
+            session.query(AuditLog).filter_by(instructor_id=instructor.id).delete(synchronize_session=False)
             session.delete(instructor)
             session.commit()
     finally:

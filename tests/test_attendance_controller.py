@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 
 from app.attendance_controller import AttendanceController
 from app.models import Student, Course, Enrollment, StudentState, StateEnum, AttendanceLog, AlertLog
@@ -63,7 +63,7 @@ def test_first_detection_checks_in_enrolled_student():
     db.courses.append(Course(id=1, course_code="CS", course_name="Test"))
     db.enrollments.append(Enrollment(student_id=1, course_id=1))
 
-    result = controller.handle_face_detected(1, datetime.utcnow())
+    result = controller.handle_face_detected(1, datetime.now(timezone.utc).replace(tzinfo=None))
 
     assert result["success"] is True
     assert len(db.attendance) == 1
@@ -74,7 +74,7 @@ def test_unenrolled_student_is_rejected():
     controller, db = make_controller()
     db.students.append(Student(id=1, student_code="S001", full_name="Test Student"))
 
-    result = controller.handle_face_detected(1, datetime.utcnow())
+    result = controller.handle_face_detected(1, datetime.now(timezone.utc).replace(tzinfo=None))
 
     assert result["success"] is False
     assert "ไม่ได้ลงทะเบียน" in result["message"]
@@ -87,10 +87,10 @@ def test_away_student_returns_without_duplicate_attendance():
     db.enrollments.append(Enrollment(student_id=1, course_id=1))
     db.attendance.append(AttendanceLog(student_id=1, course_id=1))
     db.states.append(StudentState(
-        student_id=1, current_state=StateEnum.AWAY, state_changed_at=datetime.utcnow()
+        student_id=1, current_state=StateEnum.AWAY, state_changed_at=datetime.now(timezone.utc).replace(tzinfo=None)
     ))
 
-    result = controller.handle_face_detected(1, datetime.utcnow())
+    result = controller.handle_face_detected(1, datetime.now(timezone.utc).replace(tzinfo=None))
 
     assert result["success"] is True
     assert len(db.attendance) == 1
@@ -99,7 +99,7 @@ def test_away_student_returns_without_duplicate_attendance():
 
 def test_timeout_marks_missing_and_creates_alert():
     controller, db = make_controller()
-    old = datetime.utcnow() - timedelta(minutes=20)
+    old = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=20)
     student = Student(id=1, student_code="S001", full_name="Test Student")
     db.students.append(student)
     state = StudentState(

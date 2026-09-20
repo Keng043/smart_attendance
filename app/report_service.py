@@ -23,7 +23,7 @@ ClassSession เข้ากับวิชานั้น
 
 import csv
 import io
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 
 from app.database import get_session
 from app.models import Student, Enrollment, AttendanceLog, AlertLog, ClassSession, Course
@@ -88,7 +88,7 @@ class ReportService:
             if active is None:
                 return {"success": False, "message": "ยังไม่มีคาบเรียนที่กำลังดำเนินอยู่"}
 
-            active.ended_at = datetime.utcnow()
+            active.ended_at = datetime.now(timezone.utc).replace(tzinfo=None)
             session.commit()
             return {
                 "success": True,
@@ -147,7 +147,7 @@ class ReportService:
             course_id = class_session.course_id
             course = session.query(Course).filter_by(id=course_id).first()
             session_start = class_session.started_at
-            session_end = class_session.ended_at or datetime.utcnow()
+            session_end = class_session.ended_at or datetime.now(timezone.utc).replace(tzinfo=None)
 
             # ดึงนักศึกษา "ทุกคนในระบบ" ไม่ใช่แค่คนที่ลงทะเบียนวิชานี้แล้วเท่านั้น
             # เหตุผล: ถ้ามีคนเดินผ่านกล้องแต่ไม่ได้ลงทะเบียนวิชานี้ (เช่น ลงทะเบียน

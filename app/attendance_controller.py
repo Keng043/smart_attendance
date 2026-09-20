@@ -31,7 +31,7 @@ app/attendance_controller.py
 กล้องจริงเลย (ดูตัวอย่างที่ demo_business_logic.py)
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 
 from app.database import get_session
 from app.models import (
@@ -134,13 +134,13 @@ class AttendanceController:
                 AttendanceLog(
                     student_id=student.id,
                     course_id=course_id,
-                    check_in_time=datetime.utcnow(),
+                    check_in_time=datetime.now(timezone.utc).replace(tzinfo=None),
                     status="Present",
                 )
             )
 
         state.current_state = StateEnum.IN_CLASS
-        state.state_changed_at = datetime.utcnow()
+        state.state_changed_at = datetime.now(timezone.utc).replace(tzinfo=None)
         session.commit()
 
         if not already_checked_in_before:
@@ -158,7 +158,7 @@ class AttendanceController:
     # ----------------------------------------------------------------------
     def _mark_as_leaving(self, session, student, state) -> dict:
         state.current_state = StateEnum.AWAY
-        state.state_changed_at = datetime.utcnow()
+        state.state_changed_at = datetime.now(timezone.utc).replace(tzinfo=None)
         session.commit()
         return {"success": True, "message": f"{student.full_name} เดินออกจากห้อง (เริ่มจับเวลา)"}
 
@@ -178,7 +178,7 @@ class AttendanceController:
         session = self._session_factory()
         newly_missing_names = []
         try:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc).replace(tzinfo=None)
             threshold = timedelta(seconds=AWAY_TIMEOUT_SECONDS)
 
             away_states = (
@@ -221,7 +221,7 @@ class AttendanceController:
             state = StudentState(
                 student_id=student_id,
                 current_state=StateEnum.NOT_ARRIVED,
-                state_changed_at=datetime.utcnow(),
+                state_changed_at=datetime.now(timezone.utc).replace(tzinfo=None),
             )
             session.add(state)
             session.flush()  # flush เพื่อให้ state.id ถูกสร้างขึ้นก่อนนำไปใช้ต่อ

@@ -19,7 +19,7 @@ app แบบ global ตรง ๆ)?
 import logging
 import os
 
-from flask import Flask
+from flask import Flask, session
 
 from app.csrf import get_csrf_token, validate_csrf
 
@@ -59,6 +59,23 @@ def create_app():
     app.config["REPORT_SERVICE"] = ReportService()
     app.jinja_env.globals["csrf_token"] = get_csrf_token
     app.before_request(validate_csrf)
+
+    @app.after_request
+    def apply_security_headers(response):
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault("Permissions-Policy", "camera=(self), microphone=()")
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; "
+            "script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'"
+        )
+        if session.get("instructor_id"):
+            response.headers.setdefault("Cache-Control", "no-store")
+        if app.config.get("SESSION_COOKIE_SECURE"):
+            response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+        return response
 
     # Ensure newly added tables (e.g. audit_logs) exist on an existing local SQLite DB.
     from app import models  # noqa: F401 - registers ORM models with Base.metadata

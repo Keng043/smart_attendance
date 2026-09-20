@@ -15,3 +15,5 @@ numpy==1.26.4
 
 # ===== Utility =====
 python-dotenv==1.0.1
+# face_recognition_models still imports pkg_resources; keep a compatible setuptools release.
+setuptools<80
