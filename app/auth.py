@@ -19,6 +19,9 @@ from functools import wraps
 
 from flask import session, redirect, url_for, request, jsonify
 
+from app.database import get_session
+from app.models import Instructor
+
 
 def login_required(view_func):
     """ใช้ครอบ route ที่เป็นหน้าเว็บ (HTML) - ยังไม่ login จะถูก redirect ไปหน้า /login"""
@@ -30,6 +33,30 @@ def login_required(view_func):
         return view_func(*args, **kwargs)
 
     return wrapped
+
+
+def role_required(*allowed_roles):
+    """Require an authenticated instructor with one of the allowed roles."""
+    normalized = {role.upper() for role in allowed_roles}
+
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapped(*args, **kwargs):
+            instructor_id = session.get("instructor_id")
+            if not instructor_id:
+                return jsonify({"success": False, "message": "กรุณาเข้าสู่ระบบก่อน"}), 401
+
+            db = get_session()
+            try:
+                instructor = db.query(Instructor).filter_by(id=instructor_id).first()
+                if instructor is None or (instructor.role or "INSTRUCTOR").upper() not in normalized:
+                    return jsonify({"success": False, "message": "ไม่มีสิทธิ์เข้าถึงข้อมูลนี้"}), 403
+            finally:
+                db.close()
+            return view_func(*args, **kwargs)
+
+        return wrapped
+    return decorator
 
 
 def api_login_required(view_func):

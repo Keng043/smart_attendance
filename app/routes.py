@@ -28,7 +28,7 @@ from werkzeug.security import check_password_hash
 
 from app.database import get_session
 from app.models import Student, StudentState, StateEnum, Instructor
-from app.auth import login_required, api_login_required
+from app.auth import login_required, api_login_required, role_required
 from app.audit import record_event
 from app.csrf import csrf_protect
 from app.validation import validate_login_input
@@ -88,6 +88,7 @@ def login():
         # เก็บแค่ instructor_id ไว้ใน session cookie เท่านั้น (ไม่เก็บรหัสผ่าน)
         flask_session["instructor_id"] = instructor.id
         flask_session["instructor_name"] = instructor.full_name or instructor.username
+        flask_session["instructor_role"] = (instructor.role or "INSTRUCTOR").upper()
         record_event(session, "USER_LOGIN", instructor.id)
         session.commit()
 
@@ -224,3 +225,26 @@ def export_report():
         mimetype="text/csv",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
+
+
+@bp.route("/api/admin/audit")
+@role_required("ADMIN")
+def admin_audit():
+    """Admin-only security audit view; intentionally excludes passwords and face data."""
+    from app.models import AuditLog
+
+    session = get_session()
+    try:
+        logs = session.query(AuditLog).order_by(AuditLog.id.desc()).limit(100).all()
+        return jsonify([
+            {
+                "id": log.id,
+                "instructor_id": log.instructor_id,
+                "action": log.action,
+                "details": log.details,
+                "created_at": log.created_at.isoformat(),
+            }
+            for log in logs
+        ])
+    finally:
+        session.close()

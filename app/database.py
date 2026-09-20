@@ -15,7 +15,7 @@ app/database.py
 """
 
 import os
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 # ----------------------------------------------------------------
@@ -49,6 +49,15 @@ def init_db():
     ต้อง import models ก่อนเรียกฟังก์ชันนี้ (ทำใน run_setup.py)
     """
     Base.metadata.create_all(bind=engine)
+
+    # Lightweight SQLite migration for existing installations. create_all() does
+    # not alter an existing table, so add the new Instructor.role column explicitly.
+    inspector = inspect(engine)
+    if "instructors" in inspector.get_table_names():
+        columns = {column["name"] for column in inspector.get_columns("instructors")}
+        if "role" not in columns:
+            with engine.begin() as connection:
+                connection.execute(text("ALTER TABLE instructors ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT 'INSTRUCTOR'"))
 
 
 def get_session():
