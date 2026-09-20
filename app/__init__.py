@@ -21,6 +21,8 @@ import os
 
 from flask import Flask
 
+from app.csrf import get_csrf_token, validate_csrf
+
 from app.video_stream import VideoStreamService
 from app.report_service import ReportService
 
@@ -55,6 +57,8 @@ def create_app():
 
     # ReportService ไม่ต้องพึ่งกล้อง/dlib เลย จึงสร้างง่ายๆ ตรงนี้ได้ทันที
     app.config["REPORT_SERVICE"] = ReportService()
+    app.jinja_env.globals["csrf_token"] = get_csrf_token
+    app.before_request(validate_csrf)
 
     # Ensure newly added tables (e.g. audit_logs) exist on an existing local SQLite DB.
     from app import models  # noqa: F401 - registers ORM models with Base.metadata

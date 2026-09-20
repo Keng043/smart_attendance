@@ -30,6 +30,7 @@ from app.database import get_session
 from app.models import Student, StudentState, StateEnum, Instructor
 from app.auth import login_required, api_login_required
 from app.audit import record_event
+from app.csrf import csrf_protect
 
 bp = Blueprint("main", __name__)
 
@@ -61,6 +62,7 @@ def video_feed():
 # ระบบ Login สำหรับอาจารย์
 # ==========================================================================
 @bp.route("/login", methods=["GET", "POST"])
+@csrf_protect
 def login():
     """
     หน้า Login ของอาจารย์ - ต้องกรอก username/password ให้ตรงกับที่มีใน
@@ -94,7 +96,8 @@ def login():
         session.close()
 
 
-@bp.route("/logout")
+@bp.route("/logout", methods=["POST"])
+@csrf_protect
 def logout():
     """ออกจากระบบ - บันทึก audit event แล้วล้าง session"""
     instructor_id = flask_session.get("instructor_id")
@@ -185,6 +188,7 @@ def get_session_status():
 
 
 @bp.route("/api/session/start", methods=["POST"])
+@csrf_protect
 @api_login_required
 def start_session():
     """อาจารย์กดปุ่ม 'เริ่มคลาส' - หาวิชาที่ตรงตารางเวลาขณะนี้อัตโนมัติ แล้วบันทึกเวลาเริ่ม"""
@@ -193,6 +197,7 @@ def start_session():
 
 
 @bp.route("/api/session/end", methods=["POST"])
+@csrf_protect
 @api_login_required
 def end_session():
     """อาจารย์กดปุ่ม 'จบคลาส' - บันทึกเวลาจบ พร้อมให้ดาวน์โหลดรายงานได้ทันที"""

@@ -1,6 +1,3 @@
-import os
-import tempfile
-
 import pytest
 from werkzeug.security import generate_password_hash
 
@@ -11,11 +8,6 @@ from app.models import Instructor, AuditLog
 
 @pytest.fixture()
 def client():
-    db_path = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-    db_path.close()
-
-    # The application currently reads its configured SQLite path from the project config.
-    # These route tests therefore use the real local DB only for request-level auth behavior.
     app, video = create_app()
     app.config.update(TESTING=True, SECRET_KEY="test-secret")
     client = app.test_client()
@@ -48,7 +40,19 @@ def client():
         session.close()
         video.release()
 
-    os.unlink(db_path.name)
+
+def csrf_token(client):
+    client.get("/login")
+    with client.session_transaction() as flask_session:
+        return flask_session["_csrf_token"]
+
+
+def login_data(client, password="correct-password"):
+    return {
+        "username": "pytest_auth_user",
+        "password": password,
+        "csrf_token": csrf_token(client),
+    }
 
 
 def test_dashboard_requires_login(client):
@@ -63,11 +67,16 @@ def test_api_requires_login(client):
     assert response.get_json()["success"] is False
 
 
-def test_login_rejects_wrong_password(client):
+def test_login_requires_csrf(client):
     response = client.post(
         "/login",
-        data={"username": "pytest_auth_user", "password": "wrong-password"},
+        data={"username": "pytest_auth_user", "password": "correct-password"},
     )
+    assert response.status_code == 400
+
+
+def test_login_rejects_wrong_password(client):
+    response = client.post("/login", data=login_data(client, "wrong-password"))
     assert response.status_code == 200
     assert "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" in response.get_data(as_text=True)
 
@@ -75,7 +84,7 @@ def test_login_rejects_wrong_password(client):
 def test_login_sets_session_and_records_audit(client):
     response = client.post(
         "/login",
-        data={"username": "pytest_auth_user", "password": "correct-password"},
+        data=login_data(client),
         follow_redirects=False,
     )
     assert response.status_code == 302
@@ -101,20 +110,25 @@ def test_login_sets_session_and_records_audit(client):
 def test_external_next_redirect_is_blocked(client):
     response = client.post(
         "/login?next=https://example.com",
-        data={"username": "pytest_auth_user", "password": "correct-password"},
+        data=login_data(client),
         follow_redirects=False,
     )
     assert response.status_code == 302
     assert "/dashboard" in response.headers["Location"]
 
 
-def test_logout_clears_session_and_records_audit(client):
-    client.post(
-        "/login",
-        data={"username": "pytest_auth_user", "password": "correct-password"},
-    )
+def test_logout_requires_csrf_and_records_audit(client):
+    client.post("/login", data=login_data(client))
 
-    response = client.get("/logout", follow_redirects=False)
+    response = client.post("/logout", follow_redirects=False)
+    assert response.status_code == 400
+
+    token = csrf_token(client)
+    response = client.post(
+        "/logout",
+        data={"csrf_token": token},
+        follow_redirects=False,
+    )
     assert response.status_code == 302
     assert "/login" in response.headers["Location"]
 
@@ -132,3 +146,15 @@ def test_logout_clears_session_and_records_audit(client):
         assert event is not None
     finally:
         session.close()
+
+
+def test_session_start_requires_csrf(client):
+    client.post("/login", data=login_data(client))
+    response = client.post("/api/session/start")
+    assert response.status_code == 400
+
+
+def test_session_end_requires_csrf(client):
+    client.post("/login", data=login_data(client))
+    response = client.post("/api/session/end")
+    assert response.status_code == 400
