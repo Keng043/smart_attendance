@@ -31,6 +31,7 @@ from app.models import Student, StudentState, StateEnum, Instructor
 from app.auth import login_required, api_login_required
 from app.audit import record_event
 from app.csrf import csrf_protect
+from app.validation import validate_login_input
 
 bp = Blueprint("main", __name__)
 
@@ -73,6 +74,9 @@ def login():
 
     username = request.form.get("username", "").strip()
     password = request.form.get("password", "")
+    validation_error = validate_login_input(username, password)
+    if validation_error:
+        return render_template("login.html", error=validation_error), 400
 
     session = get_session()
     try:

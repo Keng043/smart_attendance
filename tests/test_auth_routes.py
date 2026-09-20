@@ -75,6 +75,15 @@ def test_login_requires_csrf(client):
     assert response.status_code == 400
 
 
+def test_login_rejects_invalid_input(client):
+    response = client.post(
+        "/login",
+        data={"username": "", "password": "", "csrf_token": csrf_token(client)},
+    )
+    assert response.status_code == 400
+    assert "กรุณากรอกชื่อผู้ใช้" in response.get_data(as_text=True)
+
+
 def test_login_rejects_wrong_password(client):
     response = client.post("/login", data=login_data(client, "wrong-password"))
     assert response.status_code == 200
