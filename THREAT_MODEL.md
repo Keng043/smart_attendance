@@ -1,28 +1,65 @@
-# Threat Model
-
-## System boundary
-Smart Attendance contains a Flask web application, SQLite database, camera/video pipeline, face-recognition service, and instructor dashboard.
+# Biometric Threat Model
 
 ## Assets
-- Student identity
-- Face images/embeddings
-- Attendance records
+
+- Student reference face images
+- Face encodings held in application memory
+- Student identity and attendance records
 - Instructor credentials and sessions
-- Audit records
 
 ## Threats
-| Threat | Example | Current mitigation | Next step |
-|---|---|---|---|
-| Credential theft | Stolen instructor password | Password hashing, session auth | Rate limiting + stronger password policy |
-| Session abuse | Stolen browser cookie | HttpOnly, SameSite | HTTPS + session lifecycle review |
-| Unauthorized data access | Unauthenticated dashboard/API request | Login decorators | Add role-based authorization |
-| Open redirect | Crafted `next` parameter | Local-path validation | Security regression test |
-| Injection | Malicious request values | SQLAlchemy ORM | Add input validation tests |
-| Biometric spoofing | Printed/photo face presented to camera | None yet | Liveness/anti-spoofing research |
-| Data leakage | Face dataset committed to Git | `.gitignore` | Periodic secret/data scan |
-| Insider misuse | Excessive access to student data | Instructor authentication | Audit review + least privilege |
 
-## Assumptions
-- The application is operated on a trusted local network during development.
-- Production deployment must use HTTPS and a properly managed secret key.
-- Face data is sensitive and must not be treated like ordinary application assets.
+### T1 — Unauthorized access to face images
+
+An attacker who obtains the dataset could use the images outside the attendance system.
+
+Controls:
+- Keep the dataset local.
+- Do not commit it to Git.
+- Restrict filesystem permissions.
+- Avoid returning image files or paths from public APIs.
+
+### T2 — Presentation attack / spoofing
+
+A person may present a photograph or replayed video of another student.
+
+Current control:
+- Face matching tolerance is deliberately stricter than the library default.
+
+Limitation:
+- Matching tolerance does not prove liveness.
+
+Planned control:
+- Evaluate liveness or anti-spoofing before relying on the system for high-assurance attendance.
+
+### T3 — Bad reference image
+
+A reference image may contain no face or more than one face.
+
+Controls:
+- Registration should validate that exactly one face is detectable.
+- Reject ambiguous images rather than selecting an arbitrary face.
+
+### T4 — Credential compromise
+
+A compromised instructor account could expose student records and audit data.
+
+Controls:
+- Password hashing.
+- CSRF protection.
+- Server-side RBAC.
+- Audit logging.
+- Session cookie protections.
+
+### T5 — Data retention
+
+Old biometric images may remain after a student no longer needs recognition.
+
+Control needed:
+- Define retention and deletion rules with the institution/course owner.
+
+## Risk boundary
+
+This project is a defensive academic attendance system. Face recognition is an identification aid, not a guarantee of identity or liveness.
+
+Any production deployment should define who may access biometric data, why it is collected, how long it is retained, and how deletion requests are handled.
